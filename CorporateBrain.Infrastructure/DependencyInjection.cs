@@ -1,4 +1,5 @@
 ﻿using CorporateBrain.Application.Common.Interfaces;
+using CorporateBrain.Infrastructure.Authentication;
 using CorporateBrain.Infrastructure.Persistence;
 using CorporateBrain.Infrastructure.Persistence.Repositories;
 using FluentValidation;
@@ -23,7 +24,14 @@ public static class DependencyInjection
 
         // 3. Register Unit of Work (Interface matches Implementation)
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<ApplicationDbContext>());
-        
+
+        // Register the JWT Provider
+        services.AddSingleton<IJwtProvider, JwtProvider>();
+
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+
+        services.AddScoped<IAiChatServices, SemanticKernelServices>();
+
         return services;
     }
 

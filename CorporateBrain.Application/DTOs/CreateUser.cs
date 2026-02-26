@@ -1,3 +1,3 @@
 ﻿namespace CorporateBrain.Application;
 
-public record CreateUserDto(string FirstName, string LastName, string Email);
+public record CreateUserDto(string FirstName, string LastName, string Email, string Password);

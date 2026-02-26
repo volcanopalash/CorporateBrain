@@ -41,13 +41,36 @@
 using CorporateBrain.Infrastructure; // Needed to see our DI method
 using CorporateBrain.Application;
 using Scalar.AspNetCore; // Needed if you use interfaces here
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using CorporateBrain.Api.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!)),
+            ///ClockSkew = TimeSpan.Zero // Optional: Reduce default clock skew
+        };
+    });
 
 // Add services to the container.
 builder.Services.AddControllers();
 
-builder.Services.AddOpenApi(); // This is the line that adds OpenAPI support to the project. It allows us to generate API documentation and test our endpoints through a web interface.
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+}); // This is the line that adds OpenAPI support to the project. It allows us to generate API documentation and test our endpoints through a web interface.
 // 👇 THIS IS THE KEY LINE
 // This calls the method we just wrote in DependencyInjection.cs
 // It loads all the database stuff into the API.
@@ -64,6 +87,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication(); // This line enables authentication middleware, which checks for JWT tokens in incoming requests and validates them according to the configuration we set up earlier.
 app.UseAuthorization();
 app.MapControllers();
 

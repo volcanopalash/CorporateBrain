@@ -3,6 +3,7 @@ using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Application.DTOs;
 using CorporateBrain.Domain.Entities;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CorporateBrain.Api.Controllers;
@@ -14,12 +15,14 @@ public class UsersController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IValidator<CreateUserDto> _validator;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public UsersController(IUserRepository userRepository, IUnitOfWork unitOfWork, IValidator<CreateUserDto> validator)
+    public UsersController(IUserRepository userRepository, IUnitOfWork unitOfWork, IValidator<CreateUserDto> validator, IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _validator = validator;
+        _passwordHasher = passwordHasher;
     }
 
     [HttpPost]
@@ -33,8 +36,11 @@ public class UsersController : ControllerBase
             return BadRequest(validationResult.Errors);
         }
 
+        // Hash the password here
+        string hashedPassword = _passwordHasher.Hash(request.Password);
+
         // 1. Map DTO to Entity
-        var user = new User(request.FirstName, request.LastName, request.Email);
+        var user = new User(request.FirstName, request.LastName, request.Email, hashedPassword);
 
         // 2. Add to Repository (Pending state)
         await _userRepository.AddAsync(user);
@@ -46,6 +52,7 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUser(Guid id)
     {
@@ -59,4 +66,13 @@ public class UsersController : ControllerBase
         var userDto = new UserDto(user.Id, user.FirstName, user.LastName, user.Email);
         return Ok(userDto);
     }
+
+    //public async Task<IActionResult> GetAllUsers()
+    //{
+    //    var users = await _userRepository.GetAllAsync();
+
+    //    var userDtos = users.Select(u => new UserDto(u.Id, u.FirstName, u.LastName, u.Email)).ToList();
+
+    //    return Ok(userDtos);
+    //}
 }
