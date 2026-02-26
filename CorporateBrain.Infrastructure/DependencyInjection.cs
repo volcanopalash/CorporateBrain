@@ -30,7 +30,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
-        services.AddScoped<IAiChatServices, SemanticKernelServices>();
+        services.AddSingleton<IAiChatServices, SemanticKernelServices>();
 
         return services;
     }
