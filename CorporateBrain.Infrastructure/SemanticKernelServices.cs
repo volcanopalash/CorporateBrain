@@ -103,7 +103,7 @@ public sealed class SemanticKernelServices : IAiChatServices
 
         // The Magic SQL: Using pgvector's cosine distance operator (<=>) to find the most similar document chunks
         var topChunks = await _context.DocumentChunks
-            .FromSqlInterpolated($"SELECT * FROM \"DocumentChunks\" ORDER BY \" Embedding\" <=> {pgVector} LIMIT 2")
+            .FromSqlInterpolated($"SELECT * FROM \"DocumentChunks\" ORDER BY \"Embedding\" <=> {pgVector} LIMIT 2")
             .ToListAsync();
 
         var contextText = "";
@@ -140,7 +140,7 @@ public sealed class SemanticKernelServices : IAiChatServices
                 kernel: _kernel
             );
     
-            Console.WriteLine($"[AI RESPONSE] {result1}\n");
+        Console.WriteLine($"[AI RESPONSE] {result1}\n");
         return result1.ToString();
     }
 }

@@ -20,7 +20,7 @@ namespace CorporateBrain.Api.Controllers
             _aiServices = aiServices;
         }
 
-        //[Authorize]
+        [Authorize]
         [HttpPost("ask")]
         public async Task<IActionResult> Ask([FromBody] AskRequestDto request)
         {
@@ -31,6 +31,7 @@ namespace CorporateBrain.Api.Controllers
         }
 
         // New Endpoint: Teach the AI
+        [Authorize]
         [HttpPost("teach")]
         public async Task<IActionResult> Teach([FromBody] TeachRequestDto request)
         {

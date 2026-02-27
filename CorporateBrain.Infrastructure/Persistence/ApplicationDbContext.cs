@@ -17,6 +17,9 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     // 1. Add the new AI Memory Table
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
+    // Our new db for tasks table
+    public DbSet<TaskItem> Tasks { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
 
