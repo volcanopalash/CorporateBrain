@@ -30,7 +30,10 @@ public static class DependencyInjection
 
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
-        services.AddSingleton<IAiChatServices, SemanticKernelServices>();
+        services.AddScoped<IAiChatServices, SemanticKernelServices>();
+
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"), b => b.UseVector()));
 
         return services;
     }

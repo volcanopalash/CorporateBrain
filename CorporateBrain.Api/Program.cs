@@ -91,4 +91,4 @@ app.UseAuthentication(); // This line enables authentication middleware, which c
 app.UseAuthorization();
 app.MapControllers();
 
-//app.Run();
+app.Run();

@@ -1,5 +1,7 @@
 ﻿using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Domain.Entities;
+using CorporateBrain.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
@@ -15,9 +17,11 @@ public sealed class SemanticKernelServices : IAiChatServices
     private readonly IChatCompletionService _chatCompletionService;
     private readonly ITextEmbeddingGenerationService _embeddingServices;
     private readonly VectorStoreCollection<Guid, DocumentChunk> _vectorCollection;
+    private readonly ApplicationDbContext _context;
 
-    public SemanticKernelServices(IConfiguration configuration)
+    public SemanticKernelServices(IConfiguration configuration, ApplicationDbContext context)
     {
+        _context = context;
         var apiKey = configuration["AI:GemniApiKey"]!;
 
         // 1. Build the Kernel with OpenAI settings
@@ -26,7 +30,8 @@ public sealed class SemanticKernelServices : IAiChatServices
         builder.AddGoogleAIGeminiChatCompletion("gemini-2.5-flash", apiKey);
         builder.AddGoogleAIEmbeddingGeneration("gemini-embedding-001", apiKey);
 
-        builder.Services.AddInMemoryVectorStore();
+        // now we don't need to add the vector store here because we will directly use the PostgreSQL vector extension through our DbContext
+        //builder.Services.AddInMemoryVectorStore();
         //builder.AddOpenAIChatCompletion(
         //   modelId: configuration["AI:ModelId"]!,
         //   apiKey: configuration["AI:GemniApiKey"]!
@@ -36,15 +41,16 @@ public sealed class SemanticKernelServices : IAiChatServices
         _embeddingServices = _kernel.GetRequiredService<ITextEmbeddingGenerationService>();
 
         // Fix 2. Interface renamed to VecotorStore
-        var vectorStore = _kernel.GetRequiredService<VectorStore>();
-        _vectorCollection = vectorStore.GetCollection<Guid, DocumentChunk>("corporate_documents");
+        // var vectorStore = _kernel.GetRequiredService<VectorStore>();
+        // _vectorCollection = vectorStore.GetCollection<Guid, DocumentChunk>("corporate_documents");
 
-        // Fix 3: Method renamed to EnsureCollectionExistsAsync
-        _vectorCollection.EnsureCollectionExistsAsync().GetAwaiter().GetResult();
+        // // Fix 3: Method renamed to EnsureCollectionExistsAsync
+        // _vectorCollection.EnsureCollectionExistsAsync().GetAwaiter().GetResult();
     }
 
     public async Task IngestDocumentAsync(string text)
     {
+        Console.WriteLine($"\n[POSTGRES INGESTION] Storing text: {text}\n");
         var embedding = await _embeddingServices.GenerateEmbeddingAsync(text);
 
         var chunk = new DocumentChunk
@@ -54,7 +60,13 @@ public sealed class SemanticKernelServices : IAiChatServices
             Embedding = embedding
         };
 
-        await _vectorCollection.UpsertAsync(chunk);
+        // Since we're now using PostgreSQL directly, we can just add the chunk to our DbContext and save changes. The embedding will be stored in the vector column.
+        // await _vectorCollection.UpsertAsync(chunk);
+
+        _context.DocumentChunks.Add(chunk);
+        await _context.SaveChangesAsync();
+
+        Console.WriteLine($"[POSTGRES INGESTION] Successfully stored document chunk with ID: {chunk.Id}\n");
     }
 
     public async Task<string> ChatAsync(string userMessage)
@@ -77,17 +89,35 @@ public sealed class SemanticKernelServices : IAiChatServices
         //// 3. Return the text
         //return result.ToString();
 
+
+        Console.WriteLine($"\n[POSTGRES SEARCH] User asked: {userMessage}\n");
+
         var questionEmbedding = await _embeddingServices.GenerateEmbeddingAsync(userMessage);
 
         // Fix 4. Method renamed to SearchAsync
-        var searchResults = _vectorCollection.SearchAsync(questionEmbedding, top: 2);
+        // we will directly query our PostgreSQL vector column using the DbContext instead of an in-memory vector store. This is a simplified example and may need adjustments based on your actual implementation.
+        // var searchResults = _vectorCollection.SearchAsync(questionEmbedding, top: 2);
+
+        // Convert the c# array into a Pgvector object so the database understands it
+        var pgVector = new Pgvector.Vector(questionEmbedding);
+
+        // The Magic SQL: Using pgvector's cosine distance operator (<=>) to find the most similar document chunks
+        var topChunks = await _context.DocumentChunks
+            .FromSqlInterpolated($"SELECT * FROM \"DocumentChunks\" ORDER BY \" Embedding\" <=> {pgVector} LIMIT 2")
+            .ToListAsync();
 
         var contextText = "";
 
         // Fix 5 We can now loop through the results directly!
-        await foreach (var result in searchResults)
+        // await foreach (var result in searchResults)
+        // {
+        //     contextText += result.Record.Text + "\n";
+        // }
+
+        foreach (var chunk in topChunks)
         {
-            contextText += result.Record.Text + "\n";
+            contextText += chunk.Text + "\n";
+            Console.WriteLine($"[POSTGRES SEARCH] Found memory: {chunk.Id} and text: {chunk.Text}\n");
         }
 
         var history = new ChatHistory();
@@ -100,11 +130,17 @@ public sealed class SemanticKernelServices : IAiChatServices
 
         history.AddUserMessage(userMessage);
 
-        var result1 = await _chatCompletionService.GetChatMessageContentAsync(
-            history,
-            kernel: _kernel
-        );
+        // var result1 = await _chatCompletionService.GetChatMessageContentAsync(
+        //     history,
+        //     kernel: _kernel
+        // );
 
+            var result1 = await _chatCompletionService.GetChatMessageContentAsync(
+                history,
+                kernel: _kernel
+            );
+    
+            Console.WriteLine($"[AI RESPONSE] {result1}\n");
         return result1.ToString();
     }
 }
