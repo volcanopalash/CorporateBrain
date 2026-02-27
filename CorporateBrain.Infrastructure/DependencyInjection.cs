@@ -1,4 +1,5 @@
-﻿using CorporateBrain.Application.Common.Interfaces;
+﻿using CorporateBrain.Application;
+using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Infrastructure.Authentication;
 using CorporateBrain.Infrastructure.Persistence;
 using CorporateBrain.Infrastructure.Persistence.Repositories;
@@ -34,6 +35,8 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"), b => b.UseVector()));
+
+        services.AddScoped<ITaskRepository, TaskRepository>();
 
         return services;
     }

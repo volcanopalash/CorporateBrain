@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+﻿using CorporateBrain.Application.DTOs;
+
+using FluentValidation;
 
 namespace CorporateBrain.Application.Validators;
 

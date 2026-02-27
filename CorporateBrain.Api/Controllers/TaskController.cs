@@ -1,4 +1,5 @@
-﻿using CorporateBrain.Application.Common.Interfaces;
+﻿using CorporateBrain.Application;
+using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Domain.Entities;
 using CorporateBrain.Infrastructure.Persistence;
 
@@ -8,9 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CorporateBrain.Api.Controllers
 {
-    // The DTO so scalar knows what JSON to expect
-    public record CreateTaskDto(string Title, string Description, DateTime DueDate, bool IsCompleted, string AssignedTo);
-    
+
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -18,29 +17,21 @@ namespace CorporateBrain.Api.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiChatServices _aiServices;
+        private readonly ITaskRepository _taskrepo;
 
         // Injecting both the DB and the Brain
-        public TaskController(ApplicationDbContext context, IAiChatServices aiServices)
+        public TaskController(ApplicationDbContext context, IAiChatServices aiServices, ITaskRepository taskRepository)
         {
             _context = context;
             _aiServices = aiServices;
+            _taskrepo = taskRepository;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
         {
-            var task = new TaskItem
-            {
-                Title = request.Title,
-                Description = request.Description,
-                // PostgreSQL strictly requires UTC dates!
-                DueDate = request.DueDate.ToUniversalTime(),
-                AssignedTo = request.AssignedTo,
-                IsCompleted = false,
-            };
-
-            _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
+            var taskdata = new TaskItem(request.Title, request.Description, request.DueDate.ToString(), request.AssignedTo);
+            TaskItem task = await _taskrepo.CreateTask(taskdata);
 
             // 2. The AI Magic: Translate the database object into a redable memory string!
             var aiMemory = $"Task ID {task.Id}: The task '{task.Title}' is assigned to {task.AssignedTo}. " +

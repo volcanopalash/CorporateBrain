@@ -8,4 +8,16 @@ public class TaskItem
     public DateTime DueDate { get; set; }
     public bool IsCompleted { get; set; }
     public string AssignedTo { get; set; } = string.Empty; // We can link this to your Users later
+
+    public TaskItem(string TaskTitle, string description, string duedate, string assignedto)
+    {
+        Title = TaskTitle;
+        Description = description;
+        DueDate = System.DateTime.Now;
+        AssignedTo = assignedto;
+    }
+
+    public TaskItem()
+    {
+    }
 }

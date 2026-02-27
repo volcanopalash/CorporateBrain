@@ -1,4 +1,3 @@
-using CorporateBrain.Application;
 using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Application.DTOs;
 using CorporateBrain.Domain.Entities;
