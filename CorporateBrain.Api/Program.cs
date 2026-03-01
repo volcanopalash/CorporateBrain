@@ -93,6 +93,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// New: Tell the app it's running behind a secure cloud proxy!
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto
+});
+
 app.UseCors("AllowAll");
 
 // Configure the HTTP request pipeline.
