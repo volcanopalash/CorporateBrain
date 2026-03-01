@@ -49,7 +49,19 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore; // Needed if you use interfaces here
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+//var builder = WebApplication.CreateBuilder(args);
+
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    // 🚨 FIX: Disable inotify file watchers to prevent Linux memory crashes on free tiers!
+    // We don't need this anyway because Docker containers are read-only in production.
+    ContentRootPath = AppContext.BaseDirectory
+});
+
+// Immediately after creating the builder, explicitly disable the configuration reload
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -105,8 +117,8 @@ app.UseCors("AllowAll");
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
 //{
-    app.MapOpenApi();     // exposes /openapi/v1.json
-    app.MapScalarApiReference(); // exposes Scalar UI
+app.MapOpenApi();     // exposes /openapi/v1.json
+app.MapScalarApiReference(); // exposes Scalar UI
 //}
 
 app.UseHttpsRedirection();
