@@ -43,6 +43,7 @@ using CorporateBrain.Application;
 using CorporateBrain.Infrastructure; // Needed to see our DI method
 using CorporateBrain.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore; // Needed if you use interfaces here
