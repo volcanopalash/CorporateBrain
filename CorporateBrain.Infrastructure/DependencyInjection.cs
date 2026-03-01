@@ -1,5 +1,6 @@
 ﻿using CorporateBrain.Application;
 using CorporateBrain.Application.Common.Interfaces;
+using CorporateBrain.Infrastructure.AI;
 using CorporateBrain.Infrastructure.Authentication;
 using CorporateBrain.Infrastructure.Persistence;
 using CorporateBrain.Infrastructure.Persistence.Repositories;

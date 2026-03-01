@@ -9,12 +9,16 @@ public class TaskItem
     public bool IsCompleted { get; set; }
     public string AssignedTo { get; set; } = string.Empty; // We can link this to your Users later
 
-    public TaskItem(string TaskTitle, string description, string duedate, string assignedto)
+    // New: The encrypted OwnerId from the JWT
+    public string OwnerId { get; set; } = string.Empty;
+
+    public TaskItem(string TaskTitle, string description, string duedate, string assignedto, string Ownerid)
     {
         Title = TaskTitle;
         Description = description;
         DueDate = System.DateTime.Now;
         AssignedTo = assignedto;
+        OwnerId = Ownerid;
     }
 
     public TaskItem()

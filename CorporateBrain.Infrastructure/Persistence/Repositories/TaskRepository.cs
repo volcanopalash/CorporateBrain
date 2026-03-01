@@ -25,6 +25,7 @@ public class TaskRepository : ITaskRepository
             DueDate = request.DueDate.ToUniversalTime(),
             AssignedTo = request.AssignedTo,
             IsCompleted = false,
+            OwnerId = request.OwnerId
         };
 
         _context.Tasks.Add(task);

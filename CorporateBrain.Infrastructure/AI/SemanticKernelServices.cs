@@ -1,6 +1,8 @@
 ﻿using CorporateBrain.Application.Common.Interfaces;
 using CorporateBrain.Domain.Entities;
+using CorporateBrain.Infrastructure.AI.Plugins;
 using CorporateBrain.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.VectorData;
@@ -9,7 +11,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.InMemory;
 using Microsoft.SemanticKernel.Embeddings;
 
-namespace CorporateBrain.Infrastructure;
+namespace CorporateBrain.Infrastructure.AI;
 
 public sealed class SemanticKernelServices : IAiChatServices
 {
@@ -19,7 +21,7 @@ public sealed class SemanticKernelServices : IAiChatServices
     private readonly VectorStoreCollection<Guid, DocumentChunk> _vectorCollection;
     private readonly ApplicationDbContext _context;
 
-    public SemanticKernelServices(IConfiguration configuration, ApplicationDbContext context)
+    public SemanticKernelServices(IConfiguration configuration, ApplicationDbContext context, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         var apiKey = configuration["AI:GemniApiKey"]!;
@@ -36,6 +38,12 @@ public sealed class SemanticKernelServices : IAiChatServices
         //   modelId: configuration["AI:ModelId"]!,
         //   apiKey: configuration["AI:GemniApiKey"]!
         //);
+
+        // New: We give the AI the Plugin (Hands) here!
+        // It passes your existing db connection into the plugin.
+
+        builder.Plugins.AddFromObject(new TaskPlugin(_context,httpContextAccessor), "TaskPlugin");
+
         _kernel = builder.Build();
         _chatCompletionService = _kernel.GetRequiredService<IChatCompletionService>();
         _embeddingServices = _kernel.GetRequiredService<ITextEmbeddingGenerationService>();
@@ -130,15 +138,23 @@ public sealed class SemanticKernelServices : IAiChatServices
 
         history.AddUserMessage(userMessage);
 
+        // New: This setting tell Semantic Kernel to let the AI automatically trigger the TaskPlugin!
+
+        var executionSettings = new PromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
         // var result1 = await _chatCompletionService.GetChatMessageContentAsync(
         //     history,
         //     kernel: _kernel
         // );
 
-            var result1 = await _chatCompletionService.GetChatMessageContentAsync(
-                history,
-                kernel: _kernel
-            );
+        var result1 = await _chatCompletionService.GetChatMessageContentAsync(
+            history,
+            executionSettings,
+            kernel: _kernel
+        );
     
         Console.WriteLine($"[AI RESPONSE] {result1}\n");
         return result1.ToString();

@@ -6,6 +6,7 @@ using CorporateBrain.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CorporateBrain.Api.Controllers
 {
@@ -30,8 +31,12 @@ namespace CorporateBrain.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
         {
-            var taskdata = new TaskItem(request.Title, request.Description, request.DueDate.ToString(), request.AssignedTo);
-            TaskItem task = await _taskrepo.CreateTask(taskdata);
+
+            // Grab the ID directly from the validated JWT token!
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "Unknown";
+
+            var taskdata = new TaskItem(request.Title, request.Description, request.DueDate.ToString(), request.AssignedTo, userId);
+            var task = await _taskrepo.CreateTask(taskdata);
 
             // 2. The AI Magic: Translate the database object into a redable memory string!
             var aiMemory = $"Task ID {task.Id}: The task '{task.Title}' is assigned to {task.AssignedTo}. " +

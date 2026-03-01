@@ -38,13 +38,15 @@
 //app.Run();
 
 
-using CorporateBrain.Infrastructure; // Needed to see our DI method
-using CorporateBrain.Application;
-using Scalar.AspNetCore; // Needed if you use interfaces here
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using CorporateBrain.Api.OpenApi;
+using CorporateBrain.Application;
+using CorporateBrain.Infrastructure; // Needed to see our DI method
+using CorporateBrain.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore; // Needed if you use interfaces here
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +69,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Add services to the container.
 builder.Services.AddControllers();
 
+builder.Services.AddHttpContextAccessor(); // This allows us to access the current HTTP context in our services, which is useful for things like getting the current user's information from the JWT token. // 🚨 This unlocks the JWT data globally!
+
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
@@ -77,18 +81,46 @@ builder.Services.AddOpenApi(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 
+builder.Services.AddCors(options =>
+{
+    // WARNING: "AllowAnyOrigin" is great for testing and port folios. 
+    // In strict enterprise, you would lock this down to your specific frontend URL!
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
+app.UseCors("AllowAll");
+
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+//if (app.Environment.IsDevelopment())
+//{
     app.MapOpenApi();     // exposes /openapi/v1.json
     app.MapScalarApiReference(); // exposes Scalar UI
-}
+//}
 
 app.UseHttpsRedirection();
 app.UseAuthentication(); // This line enables authentication middleware, which checks for JWT tokens in incoming requests and validates them according to the configuration we set up earlier.
 app.UseAuthorization();
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        // This command automatically runs any pending migrations on startup!
+        context.Database.Migrate();
+        Console.WriteLine("Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while migrating the database: {ex.Message}");
+    }
+}
 
 app.Run();
